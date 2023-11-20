@@ -60,8 +60,13 @@ function ConvertToHHMMSS {
   return $timeString
 }
   
-function PremereUnTastoPerContinuare {
-  Write-Host "Premere un tasto per continuare..."
+function PremereUnTasto {
+  param (
+    [Parameter(Mandatory = $false)]
+    [string]
+    $Message = "Premere un tasto per continuare..."
+  )
+  Write-Host $Message
   $x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
 
@@ -73,38 +78,24 @@ function ControllaAdmin {
   
   if (-not $windowsPrincipal.IsInRole($adminRole)) {
     Write-Host "Questo script deve essere eseguito come amministratore!" -ForegroundColor Red
-    PremereUnTastoPerContinuare
+    PremereUnTasto "Operazione interrotta, premere un tasto per terminare o chiudere la finestra"
     Exit 
   }
-}
-
-function GetUserInfo {
-  param (
-    [Parameter(Mandatory = $true)]
-    [string]
-    $UserSID # Usare il SID dell'utente come input
-  )
-
-  # Creare un nuovo oggetto SecurityIdentifier
-  $sid = New-Object System.Security.Principal.SecurityIdentifier($UserSID)
-
-  # Ottenere l'account corrispondente all'SID
-  $account = $sid.Translate( [System.Security.Principal.NTAccount] )
-
-  # Trova l'utente nel context principale del computer
-  $user = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity(
-    [System.DirectoryServices.AccountManagement.ContextType]::Machine,
-    $account.Value)
-
-  # Stampa il path della directory home dell'utente
-  # Write-Output $user.HomeDirectory
-  return $user
 }
 
 function RimozioneDatiProfiliRoutine {
   $CurrentUserSID = (New-Object System.Security.Principal.WindowsPrincipal([System.Security.Principal.WindowsIdentity]::GetCurrent())).Identity.User.Value
 
-  $filteredUserProfiles = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.Loaded -eq $false -and $_.Special -eq $false -and $_.SID -ne $CurrentUserSID -and $global:excludeUsers -notcontains $_.LocalPath.split('\')[-1] }
+  try {
+    $filteredUserProfiles = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.Loaded -eq $false -and $_.Special -eq $false -and $_.SID -ne $CurrentUserSID -and $global:excludeUsers -notcontains $_.LocalPath.split('\')[-1] }
+  }
+  catch {
+    $msg = "Impossibile procedere, potrebbero esserci problemi con i file di sistema, si consiglia di utilizzare il comando: sfc /scannow"
+    Write-Host $msg
+    Write-Log $msg
+    PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
+    Exit
+  }
   
   # $profileCount = $filteredUserProfiles.Count
   $profileCount = 0
@@ -114,7 +105,7 @@ function RimozioneDatiProfiliRoutine {
   
   if ( $profileCount -le 0  ) {
     Write-Output "Non ci sono profili idonei per la cancellazione"
-    PremereUnTastoPerContinuare
+    PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
     Exit
   }
   if ( $Anteprima ) {
@@ -125,8 +116,8 @@ function RimozioneDatiProfiliRoutine {
   
   $risposta = Read-Host "Attenzione, si sta per eliminate i dati di ${profileCount} profilo/i utente, proseguire? (S|[N])"
   if ($risposta -ne "S") {
-    Write-Output "Operazione interrotta"
-    PremereUnTastoPerContinuare
+    # Write-Output "Operazione interrotta"
+    PremereUnTasto "Operazione interrotta, premere un tasto per terminare o chiudere la finestra"
     Exit
   }
       
@@ -142,12 +133,14 @@ function RimozioneDatiProfiliRoutine {
   
   foreach ($UserProfile in $filteredUserProfiles) {
         
+    $UserHomePath = $UserProfile.LocalPath
     $sid = New-Object System.Security.Principal.SecurityIdentifier($UserProfile.SID)
     try {
       $user = $sid.Translate([System.Security.Principal.NTAccount])
     }
     catch {
-      $user = "undefined"
+      # $user = "undefined"
+      $user = $UserHomePath
     }
   
     $counter++
@@ -160,7 +153,7 @@ function RimozioneDatiProfiliRoutine {
     try {
       if ( -not $Anteprima ) {
         $UserProfile | Remove-WmiObject
-        Write-Log "Eliminazione in corso dati utente $user"
+        Write-Log "Eliminazione dati utente ${user} ($UserHomePath)"
       }
       $elementiCancelati++
     }
@@ -197,7 +190,7 @@ function RimozioneDatiProfiliRoutine {
   Write-Output "Profili cancellati $elementiCancelati"
   Write-Output "Tempo trascorso $tempoStrascorsoHHMMSS"
   Write-Output "Errori $errori"
-  PremereUnTastoPerContinuare  
+  PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
 }
 #------------------------------------------------------------------------
 ControllaAdmin
