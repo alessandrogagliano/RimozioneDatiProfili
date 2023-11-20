@@ -84,6 +84,7 @@ function ControllaAdmin {
 }
 
 function RimozioneDatiProfiliRoutine {
+
   $CurrentUserSID = (New-Object System.Security.Principal.WindowsPrincipal([System.Security.Principal.WindowsIdentity]::GetCurrent())).Identity.User.Value
 
   try {
@@ -114,7 +115,11 @@ function RimozioneDatiProfiliRoutine {
     Write-Output ""
   }
   
-  $risposta = Read-Host "Attenzione, si sta per eliminate i dati di ${profileCount} profilo/i utente, proseguire? (S|[N])"
+  Write-Output ""
+  Write-Output "Attenzione, si sta per eliminate i dati di ${profileCount} profilo/i utente"
+  Write-Output "Per interrompere premere il tasto ESC e attendere il termine dell'operazione in corso"
+  Write-Output ""
+  $risposta = Read-Host "Confermare? (S|[N])"
   if ($risposta -ne "S") {
     # Write-Output "Operazione interrotta"
     PremereUnTasto "Operazione interrotta, premere un tasto per terminare o chiudere la finestra"
@@ -132,7 +137,18 @@ function RimozioneDatiProfiliRoutine {
   Write-Output "--------------------------------------------------------"
   
   foreach ($UserProfile in $filteredUserProfiles) {
-        
+
+    if ([System.Console]::KeyAvailable) {
+      $keyInfo = [System.Console]::ReadKey($true)
+  
+      # Controlla se l'utente ha premuto il tasto ESC
+      if ($keyInfo.Key -eq "Escape") { 
+        # Termina il loop quando viene premuto il tasto ESC.
+        PremereUnTasto "E' stato premuto il tasto ESC, operazione interrotta. Premere un tasto per terminare o chiudere la finestra"
+        break  
+      }
+    }
+
     $UserHomePath = $UserProfile.LocalPath
     $sid = New-Object System.Security.Principal.SecurityIdentifier($UserProfile.SID)
     try {
@@ -181,7 +197,7 @@ function RimozioneDatiProfiliRoutine {
     $tempoStimatoHHMMSS = ConvertToHHMMSS -unixTimestamp $tempoStimato
     $tempoStrascorsoLabel = " Tempo trascorso: $tempoStrascorsoHHMMSS"
     $tempoStimatoLabel = " Tempo stimato: $tempoStimatoHHMMSS"
-    
+
   }
   
   $tempoStrascorsoHHMMSS = ConvertToHHMMSS -unixTimestamp $totalSeconds
