@@ -4,21 +4,22 @@ param(
   [Parameter(Mandatory = $false)]
   [boolean]$Anteprima = $false
 )
-
+$Global:Anteprima = $Anteprima
+#------------------------------------------------------------------------
+$global:excludeUsers = @()
+$global:esclusifileName = 'UtentiEsclusi.txt'
+$global:scriptPath = $MyInvocation.MyCommand.Path
 #------------------------------------------------------------------------
 
-$excludeUsers = @()
-
-$fileName = 'UtentiEsclusi.txt'
-$currentPath = Split-Path $MyInvocation.MyCommand.Path
-$filePath = Join-Path -Path $currentPath -ChildPath $fileName 
-
-if (Test-Path $filePath) {
-  # Se il file esiste, legge il contenuto nel array
-  $excludeUsers = Get-Content $filePath
+function CaricaEsclusi {
+  $global:esclusifileName = 'UtentiEsclusi.txt'
+  $currentPath = Split-Path $global:scriptPath
+  $filePath = Join-Path -Path $currentPath -ChildPath $global:esclusifileName 
+  if (Test-Path $filePath) {
+    # Se il file esiste, legge il contenuto nel array
+    $global:excludeUsers = Get-Content $filePath
+  }
 }
-
-#------------------------------------------------------------------------
 
 function Get-UnixTimestamp {
   [CmdletBinding()]
@@ -45,23 +46,29 @@ function PremereUnTastoPerContinuare {
   Write-Host "Premere un tasto per continuare..."
   $x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }
-  
-#------------------------------------------------------------------------
 
-$windowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-$windowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($windowsID)
+function ControllaAdmin {
+  $windowsID = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+  $windowsPrincipal = New-Object System.Security.Principal.WindowsPrincipal($windowsID)
+    
+  $adminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
   
-$adminRole = [System.Security.Principal.WindowsBuiltInRole]::Administrator
-
-if (-not $windowsPrincipal.IsInRole($adminRole)) {
-  Write-Host "Questo script deve essere eseguito come amministratore!" -ForegroundColor Red
-  PremereUnTastoPerContinuare
-  Exit 
+  if (-not $windowsPrincipal.IsInRole($adminRole)) {
+    Write-Host "Questo script deve essere eseguito come amministratore!" -ForegroundColor Red
+    PremereUnTastoPerContinuare
+    Exit 
+  }
 }
+
+#------------------------------------------------------------------------
+ControllaAdmin
+#------------------------------------------------------------------------
+CaricaEsclusi
+#------------------------------------------------------------------------
 
 $CurrentUserSID = (New-Object System.Security.Principal.WindowsPrincipal([System.Security.Principal.WindowsIdentity]::GetCurrent())).Identity.User.Value
 
-$filteredUserProfiles = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.Loaded -eq $false -and $_.Special -eq $false -and $_.SID -ne $CurrentUserSID -and $excludeUsers -notcontains $_.LocalPath.split('\')[-1] }
+$filteredUserProfiles = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.Loaded -eq $false -and $_.Special -eq $false -and $_.SID -ne $CurrentUserSID -and $global:excludeUsers -notcontains $_.LocalPath.split('\')[-1] }
 
 # $profileCount = $filteredUserProfiles.Count
 $profileCount = 0
