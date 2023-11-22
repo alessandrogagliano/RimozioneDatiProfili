@@ -115,33 +115,37 @@ function RimozioneDatiProfiliRoutine {
   }
   catch {
     $msg = "Impossibile procedere, potrebbero esserci problemi con i file di sistema, si consiglia di utilizzare il comando: sfc /scannow"
+    Write-Host ""
     Write-Host $msg
+    Write-Host ""
     Write-Log $msg
     PremereUnTasto
     Return
   }
   
-  # $profileCount = $filteredUserProfiles.Count
   $profileCount = 0
   foreach ($UserProfile in $filteredUserProfiles) {
     $profileCount++
   }
   
   if ( $profileCount -le 0  ) {
-    Write-Output "Non ci sono profili idonei per la cancellazione"
+    Write-Host ""
+    Write-Host "Non ci sono profili idonei per la cancellazione"
+    Write-Host ""
     PremereUnTasto
     Return
   }
   if ( $Anteprima ) {
-    Write-Output ""
-    Write-Output "------- MODALITA' ANTEPRIMA, I DATI NON VERRANNO CANCELLATI -------"
-    Write-Output ""
+    Write-Host ""
+    Write-Host "------- MODALITA' ANTEPRIMA, I DATI NON VERRANNO CANCELLATI -------"
+    Write-Host ""
   }
   
-  Write-Output ""
-  Write-Output "Attenzione, si sta per eliminate i dati di ${profileCount} profilo/i utente"
-  Write-Output "(Per interrompere l'operazione premere ESC e attendere la fine del processo in corso)"
-  Write-Output ""
+  Write-Host ""
+  Write-Host "ATTENZIONE, i dati di ${profileCount} profilo/i utente verranno cancellati definitivamente"
+  Write-Host "L'OPERAZIONE NON POTRA' ESSERE ANNULLATA"
+  Write-Host "Il tasto ESC interrompera' il processo di cancellazione alla fine dell'operazione in corso"
+  Write-Host ""
   $risposta = Read-Host "Confermare? (S|[N])"
   if ($risposta -ne "S") {
     Write-Log "Operazione interrotta"
@@ -157,7 +161,7 @@ function RimozioneDatiProfiliRoutine {
   $tempoStrascorsoLabel = ""
   $tempoStimatoLabel = ""
       
-  Write-Output "--------------------------------------------------------"
+  Write-Host "--------------------------------------------------------"
   
   foreach ($UserProfile in $filteredUserProfiles) {
 
@@ -167,7 +171,7 @@ function RimozioneDatiProfiliRoutine {
       # Controlla se l'utente ha premuto il tasto ESC
       if ($keyInfo.Key -eq "Escape") { 
         # Termina il loop quando viene premuto il tasto ESC.
-        PremereUnTasto "E' stato premuto il tasto ESC, operazione interrotta. Premere un tasto per terminare o chiudere la finestra"
+        PremereUnTasto "E' stato premuto il tasto ESC, operazione interrotta. Premere un tasto per continuare"
         break  
       }
     }
@@ -184,7 +188,7 @@ function RimozioneDatiProfiliRoutine {
   
     $counter++
     Write-Host
-    Write-Output "Eliminazione del profilo $counter $user ($toDo/$profileCount) ${tempoStrascorsoLabel} ${tempoStimatoLabel}"
+    Write-Host "Eliminazione del profilo $counter $user ($toDo/$profileCount) ${tempoStrascorsoLabel} ${tempoStimatoLabel}"
     $toDo--
         
     $start = Get-UnixTimestamp
@@ -224,13 +228,13 @@ function RimozioneDatiProfiliRoutine {
   }
   
   $tempoStrascorsoHHMMSS = ConvertToHHMMSS -unixTimestamp $totalSeconds
-  Write-Output ""
-  Write-Output "--------------------------------------------------------"
-  Write-Output "Fine pulizia profili"
-  Write-Output "Profili cancellati $elementiCancelati"
-  Write-Output "Tempo trascorso $tempoStrascorsoHHMMSS"
-  Write-Output "Errori $errori"
-  Write-Output ""
+  Write-Host ""
+  Write-Host "--------------------------------------------------------"
+  Write-Host "Fine pulizia profili"
+  Write-Host "Profili cancellati $elementiCancelati"
+  Write-Host "Tempo trascorso $tempoStrascorsoHHMMSS"
+  Write-Host "Errori $errori"
+  Write-Host ""
   PremereUnTasto
 }
 
