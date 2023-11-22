@@ -1,4 +1,4 @@
-# Nome del Progetto
+# Rimozione Dati Profili
 
 ![Version](https://img.shields.io/badge/version-0.2-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
