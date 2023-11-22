@@ -9,8 +9,13 @@ $Global:Anteprima = $Anteprima
 $global:excludeUsers = @()
 $global:esclusifileName = 'UtentiEsclusi.txt'
 $global:currentPath = Split-Path $MyInvocation.MyCommand.Path
-$global:logFileName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name) + ".log"
+$global:scriptDirectory = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+$today = Get-Date -Format "yyyy-MM-dd"
+$global:scriptName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Name)
+$global:logFileExt = "log"
+$global:logFileName = $global:scriptName + "-" + $today + "." + $global:logFileExt
 $global:logFilePath = Join-Path -Path $global:currentPath -ChildPath $global:logFileName
+$global:logExpiration = 1 # giorni
 #------------------------------------------------------------------------
 
 function CaricaEsclusi {
@@ -39,6 +44,23 @@ function Write-Log {
   Add-Content -Path $global:logFilePath -Value $logEntry
 }
 
+function Remove-OldLog {
+  $AllFiles = Get-ChildItem -Path $global:scriptDirectory -File
+  foreach ($file in $AllFiles) {
+    # Estrai la data dal nome del file se esiste nel formato "yyyy-MM-dd"
+    if ($file.BaseName -match "\d{4}-\d{2}-\d{2}") {
+      $dateStr = $Matches[0]
+      $fileDate = [datetime]::ParseExact($dateStr, "yyyy-MM-dd", $null)
+      # Se il file è più vecchio di 7 giorni, rimuovilo
+      if ((Get-Date).AddDays(-$global:logExpiration) -gt $fileDate) {
+        # Write-Host "Rimuovo il file" $file.FullName
+        Remove-Item $file.FullName
+      }
+    }
+  }
+}
+
+
 function Get-UnixTimestamp {
   [CmdletBinding()]
   param ()
@@ -64,7 +86,8 @@ function PremereUnTasto {
   param (
     [Parameter(Mandatory = $false)]
     [string]
-    $Message = "Premere un tasto per continuare..."
+    # $Message = "Premere un tasto per continuare..."
+    $Message = "Premere un tasto per terminare o chiudere la finestra..."
   )
   Write-Host $Message
   $x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
@@ -94,8 +117,8 @@ function RimozioneDatiProfiliRoutine {
     $msg = "Impossibile procedere, potrebbero esserci problemi con i file di sistema, si consiglia di utilizzare il comando: sfc /scannow"
     Write-Host $msg
     Write-Log $msg
-    PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
-    Exit
+    PremereUnTasto
+    Return
   }
   
   # $profileCount = $filteredUserProfiles.Count
@@ -106,8 +129,8 @@ function RimozioneDatiProfiliRoutine {
   
   if ( $profileCount -le 0  ) {
     Write-Output "Non ci sono profili idonei per la cancellazione"
-    PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
-    Exit
+    PremereUnTasto
+    Return
   }
   if ( $Anteprima ) {
     Write-Output ""
@@ -117,13 +140,13 @@ function RimozioneDatiProfiliRoutine {
   
   Write-Output ""
   Write-Output "Attenzione, si sta per eliminate i dati di ${profileCount} profilo/i utente"
-  Write-Output "Per interrompere premere il tasto ESC e attendere il termine dell'operazione in corso"
+  Write-Output "(Per interrompere l'operazione premere ESC e attendere la fine del processo in corso)"
   Write-Output ""
   $risposta = Read-Host "Confermare? (S|[N])"
   if ($risposta -ne "S") {
-    # Write-Output "Operazione interrotta"
+    Write-Log "Operazione interrotta"
     PremereUnTasto "Operazione interrotta, premere un tasto per terminare o chiudere la finestra"
-    Exit
+    Return
   }
       
   $elementiCancelati = 0
@@ -201,17 +224,22 @@ function RimozioneDatiProfiliRoutine {
   }
   
   $tempoStrascorsoHHMMSS = ConvertToHHMMSS -unixTimestamp $totalSeconds
+  Write-Output ""
   Write-Output "--------------------------------------------------------"
   Write-Output "Fine pulizia profili"
   Write-Output "Profili cancellati $elementiCancelati"
   Write-Output "Tempo trascorso $tempoStrascorsoHHMMSS"
   Write-Output "Errori $errori"
-  PremereUnTasto "Premere un tasto per terminare o chiudere la finestra"
+  Write-Output ""
+  PremereUnTasto
 }
+
 #------------------------------------------------------------------------
 ControllaAdmin
 #------------------------------------------------------------------------
 CaricaEsclusi
 #------------------------------------------------------------------------
 RimozioneDatiProfiliRoutine
+#------------------------------------------------------------------------
+Remove-OldLog
 #------------------------------------------------------------------------
