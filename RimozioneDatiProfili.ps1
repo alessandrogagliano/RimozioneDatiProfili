@@ -1,5 +1,4 @@
 #------------------------------------------------------------------------
-#------------------------------------------------------------------------
 $global:excludeUsers = @()
 $global:esclusifileName = 'UtentiEsclusi.txt'
 $global:currentPath = Split-Path $MyInvocation.MyCommand.Path
@@ -134,7 +133,6 @@ function RimozioneDatiProfiliRoutine {
   Write-Host ""
   Write-Host "ATTENZIONE, i dati di ${profileCount} profilo/i utente verranno cancellati definitivamente"
   Write-Host "L'OPERAZIONE NON POTRA' ESSERE ANNULLATA"
-  Write-Host "Premere ESC per interrompere il processo di cancellazione alla fine dell'operazione in corso"
   Write-Host ""
   $risposta = Read-Host "Confermare? (S|[N])"
   if ($risposta -ne "S") {
@@ -148,11 +146,12 @@ function RimozioneDatiProfiliRoutine {
   $counter = 0
   $totalSeconds = 0;
   $toDo = $profileCount;
+  $activeProfileCount = 1
   $tempoStrascorsoLabel = ""
   $tempoStimatoLabel = ""
       
   Write-Host "--------------------------------------------------------"
-  
+  Write-Host "Premere ESC per interrompere il processo di cancellazione alla fine dell'operazione in corso"
   foreach ($UserProfile in $filteredUserProfiles) {
 
     if ([System.Console]::KeyAvailable) {
@@ -177,9 +176,11 @@ function RimozioneDatiProfiliRoutine {
   
     $counter++
     Write-Host
-    Write-Host "Eliminazione del profilo $counter $user ($toDo/$profileCount) ${tempoStrascorsoLabel} ${tempoStimatoLabel}"
+    # Write-Host "Eliminazione del profilo $counter $user ($toDo/$profileCount) ${tempoStrascorsoLabel} ${tempoStimatoLabel}"
+    Write-Host "Eliminazione del profilo $counter $user ($activeProfileCount/$profileCount) ${tempoStrascorsoLabel} ${tempoStimatoLabel}"
     Write-Log "Eliminazione dati utente ${user} ($UserHomePath)"
     $toDo--
+    $activeProfileCount++
     
     $start = Get-UnixTimestamp
     
